@@ -1,28 +1,39 @@
 package main
 
 import (
+	"context"
 	"flag"
 	"log"
 	tgClient "read-adviser-bot/clients/telegram"
 	"read-adviser-bot/consumer/event-consumer"
 	"read-adviser-bot/events/telegram"
-	"read-adviser-bot/storage/files"
+	"read-adviser-bot/storage/sqllite"
 )
 
 const (
-	storagePath = "./storage/storage.db"
+	storagePath = "data/sqlite/bot.db"
 	BatchSize   = 100
 )
 
 func main() {
+	//s:=files.New(storagePath)
+	s, err := sqllite.New(storagePath)
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = s.Init(context.TODO())
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	eventsProcessor := telegram.New(
 		tgClient.New(mustHost(), mustToken()),
-		files.New(storagePath),
+		s,
 	)
 	log.Print("service started")
 
 	consumer := event_consumer.New(eventsProcessor, eventsProcessor, BatchSize)
-	if err := consumer.Start(); err != nil {
+	if err := consumer.Start(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
 }
