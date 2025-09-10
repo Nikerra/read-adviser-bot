@@ -1,9 +1,11 @@
 package kafka
 
 import (
+	"encoding/json"
 	"errors"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
 	"read-adviser-bot/lib/e"
+	"read-adviser-bot/storage"
 	"strings"
 	"time"
 )
@@ -30,14 +32,18 @@ func NewProducer(adress []string) (*Producer, error) {
 	return &Producer{producer: p}, nil
 }
 
-func (p *Producer) Produce(message, topic string) error {
+func (p *Producer) Produce(message *storage.Page, topic string) error {
 
+	data, err := json.Marshal(message)
+	if err != nil {
+		return e.Wrap("error marshalling message", err)
+	}
 	kafkaMsg := &kafka.Message{
 		TopicPartition: kafka.TopicPartition{
 			Topic:     &topic,
 			Partition: kafka.PartitionAny,
 		},
-		Value: []byte(message),
+		Value: data,
 		Key:   nil,
 	}
 	kafcaChan := make(chan kafka.Event)

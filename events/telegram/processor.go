@@ -2,7 +2,6 @@ package telegram
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"log"
 	"read-adviser-bot/clients/telegram"
@@ -84,11 +83,10 @@ func (p *Processor) processMessage(ctx context.Context, event events.Event) erro
 			URL:      event.Text,
 			UserName: meta.Username,
 		}
-		data, _ := json.Marshal(page)
-		if err := p.producer.Produce(string(data), PagesTopic); err != nil {
+		if err := p.producer.Produce(page, PagesTopic); err != nil {
 			return e.Wrap("can't produce message to Kafka", err)
 		}
-		log.Printf("Send message: %s to Kafka topic: %s", data, PagesTopic)
+		log.Printf("Send message: %T to Kafka topic: %s", page, PagesTopic)
 	}
 
 	if err := p.doCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
