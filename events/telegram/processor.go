@@ -86,7 +86,7 @@ func (p *Processor) processMessage(ctx context.Context, event events.Event) erro
 		if err := p.producer.Produce(page, PagesTopic); err != nil {
 			return e.Wrap("can't produce message to Kafka", err)
 		}
-		log.Printf("Send message: %T to Kafka topic: %s", page, PagesTopic)
+		log.Printf("Send message: %+v to Kafka topic: %s", *page, PagesTopic)
 	}
 
 	if err := p.doCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
