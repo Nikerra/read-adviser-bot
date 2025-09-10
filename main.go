@@ -7,6 +7,7 @@ import (
 	tgClient "read-adviser-bot/clients/telegram"
 	"read-adviser-bot/consumer/event-consumer"
 	"read-adviser-bot/events/telegram"
+	kl "read-adviser-bot/internal/kafka"
 	"read-adviser-bot/storage/sqllite"
 )
 
@@ -17,6 +18,7 @@ const (
 
 func main() {
 	//s:=files.New(storagePath)
+	// Инициализация БД
 	s, err := sqllite.New(storagePath)
 	if err != nil {
 		log.Fatal(err)
@@ -26,9 +28,18 @@ func main() {
 		log.Fatal(err)
 	}
 
+	// Инициализация Kafka Producer
+	producer, err := kl.NewProducer([]string{"localhost:9092"})
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer producer.Close()
+
+	// Создание Processor с продюсером
 	eventsProcessor := telegram.New(
 		tgClient.New(mustHost(), mustToken()),
 		s,
+		producer, // <-- передаем продюсер
 	)
 	log.Print("service started")
 
@@ -36,6 +47,7 @@ func main() {
 	if err := consumer.Start(context.TODO()); err != nil {
 		log.Fatal(err)
 	}
+
 }
 
 func mustToken() string {
