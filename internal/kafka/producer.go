@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"github.com/confluentinc/confluent-kafka-go/v2/kafka"
+	"github.com/google/uuid"
 	"read-adviser-bot/lib/e"
 	"read-adviser-bot/storage"
 	"strings"
@@ -44,15 +45,15 @@ func (p *Producer) Produce(message *storage.Page, topic string) error {
 			Partition: kafka.PartitionAny,
 		},
 		Value: data,
-		Key:   nil,
+		Key:   []byte(uuid.NewString()),
 	}
-	kafcaChan := make(chan kafka.Event)
-	if err := p.producer.Produce(kafkaMsg, kafcaChan); err != nil {
+	kafkaChan := make(chan kafka.Event)
+	if err := p.producer.Produce(kafkaMsg, kafkaChan); err != nil {
 		return e.Wrap("error producing message", err)
 	}
 
-	e := <-kafcaChan
-	switch ev := e.(type) {
+	event := <-kafkaChan
+	switch ev := event.(type) {
 	case *kafka.Message:
 		return nil
 	case kafka.Error:
