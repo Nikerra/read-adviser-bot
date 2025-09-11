@@ -7,29 +7,34 @@ import (
 	tgClient "read-adviser-bot/clients/telegram"
 	"read-adviser-bot/consumer/event-consumer"
 	"read-adviser-bot/events/telegram"
-	kl "read-adviser-bot/internal/kafka"
+	"read-adviser-bot/internal/kafka/consumer"
+	kl "read-adviser-bot/internal/kafka/producer"
 	"read-adviser-bot/storage/sqllite"
+	"strings"
 )
 
 const (
-	storagePath = "data/sqlite/bot.db"
-	BatchSize   = 100
+	storagePath      = "data/sqlite/bot.db"
+	BatchSize        = 100
+	BootstrapServers = "localhost:9092"
 )
 
 func main() {
+	//Инициализая контекста
+	ctx := context.TODO()
 	//s:=files.New(storagePath)
 	// Инициализация БД
 	s, err := sqllite.New(storagePath)
 	if err != nil {
 		log.Fatal(err)
 	}
-	err = s.Init(context.TODO())
+	err = s.Init(ctx)
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	// Инициализация Kafka Producer
-	producer, err := kl.NewProducer([]string{"localhost:9092"})
+	producer, err := kl.NewProducer(strings.Split(BootstrapServers, ","))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,11 +48,28 @@ func main() {
 	)
 	log.Print("service started")
 
-	consumer := event_consumer.New(eventsProcessor, eventsProcessor, BatchSize)
-	if err := consumer.Start(context.TODO()); err != nil {
+	tgConsumer := event_consumer.New(eventsProcessor, eventsProcessor, BatchSize)
+
+	kafkaConsumer, err := consumer.NewConsumer(
+		strings.Split(BootstrapServers, ","),
+		"pages-topic",
+		"bot-group",
+		eventsProcessor,
+	)
+	if err != nil {
 		log.Fatal(err)
 	}
 
+	go func() {
+		err := tgConsumer.Start(ctx)
+		if err != nil {
+			log.Fatal(err)
+		}
+	}()
+	go kafkaConsumer.Start(ctx)
+
+	log.Print("service started")
+	select {}
 }
 
 func mustToken() string {

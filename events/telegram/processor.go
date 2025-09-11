@@ -6,7 +6,7 @@ import (
 	"log"
 	"read-adviser-bot/clients/telegram"
 	"read-adviser-bot/events"
-	kl "read-adviser-bot/internal/kafka"
+	kl "read-adviser-bot/internal/kafka/producer"
 	"read-adviser-bot/lib/e"
 	"read-adviser-bot/storage"
 )
@@ -69,7 +69,7 @@ func (p *Processor) Process(ctx context.Context, event events.Event) error {
 	}
 }
 
-// Обработка сообщения с отправкой в Kafka до doCmd
+// Обработка сообщения с отправкой в Kafka до DoCmd
 func (p *Processor) processMessage(ctx context.Context, event events.Event) error {
 	const errMsg = "can't process message"
 	meta, err := meta(event)
@@ -77,22 +77,27 @@ func (p *Processor) processMessage(ctx context.Context, event events.Event) erro
 		return e.Wrap(errMsg, err)
 	}
 
-	// Отправка в Kafka перед обработкой команды
-	if p.producer != nil {
+	text := event.Text
+
+	// Если это URL — отправляем в Kafka, не сохраняем напрямую
+	if isURL(text) {
 		page := &storage.Page{
-			URL:      event.Text,
+			URL:      text,
 			UserName: meta.Username,
+			ChatID:   meta.ChatID,
 		}
-		if err := p.producer.Produce(page, PagesTopic); err != nil {
-			return e.Wrap("can't produce message to Kafka", err)
+		if p.producer != nil {
+			if err := p.producer.Produce(page, PagesTopic); err != nil {
+				log.Printf("[KafkaProducer] can't produce message: %v", err)
+			} else {
+				log.Printf("[KafkaProducer] sent message: %+v", *page)
+			}
 		}
-		log.Printf("Send message: %+v to Kafka topic: %s", *page, PagesTopic)
+		return p.tg.SendMessages(meta.ChatID, "👌 Ссылка получена, сохраняем...")
 	}
 
-	if err := p.doCmd(ctx, event.Text, meta.ChatID, meta.Username); err != nil {
-		return e.Wrap(errMsg, err)
-	}
-	return nil
+	// Иначе это команда — обрабатываем как раньше
+	return p.DoCmd(ctx, text, meta.ChatID, meta.Username)
 }
 
 func meta(event events.Event) (Meta, error) {

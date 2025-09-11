@@ -21,6 +21,7 @@ var ErrNoSavedPages = errors.New("no saved pages")
 type Page struct {
 	URL      string
 	UserName string
+	ChatID   int
 }
 
 func (p Page) Hash() (string, error) {

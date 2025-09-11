@@ -17,7 +17,7 @@ const (
 	StartCmd = "/start"
 )
 
-func (p *Processor) doCmd(ctx context.Context, text string, chatID int, username string) error {
+func (p *Processor) DoCmd(ctx context.Context, text string, chatID int, username string) error {
 	text = strings.TrimSpace(text)
 
 	log.Printf("got new command'%s' from '%s'", text, username)
