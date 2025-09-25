@@ -4,7 +4,7 @@ go 1.25.0
 
 require (
 	github.com/confluentinc/confluent-kafka-go/v2 v2.11.1
-	github.com/emicklei/go-restful/v3 v3.11.0
+	github.com/emicklei/go-restful/v3 v3.13.0
 	github.com/google/uuid v1.6.0
 	github.com/mattn/go-sqlite3 v1.14.32
 )
